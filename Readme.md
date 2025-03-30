@@ -248,6 +248,3 @@ docker-compose -f docker-compose-micro.yaml down
 docker-compose -f docker-compose-micro.yaml up -d
 
 chmod +x ~/microservice_llm/deploy.sh
-
-
-
