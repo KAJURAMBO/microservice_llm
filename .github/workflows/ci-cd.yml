@@ -30,22 +30,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Cache Python dependencies
-        uses: actions/cache@v3
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip3 install -r requirements.txt
-          pip3 install pytest pytest-cov
+          pip3 install pytest pytest-cov httpx
 
       - name: Run tests
-        run: python -m pytest tests/ --cov=. --cov-report=xml
+        working-directory: microservice_llm
+        run: |
+          python -m pytest tests/ --cov=. --cov-report=xml
 
   deploy:
     needs: [run_tests]
@@ -54,7 +53,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
+      
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -62,6 +61,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            cd microservice_llm
             git pull origin main
             docker-compose -f docker-compose-micro.yaml down
             docker-compose -f docker-compose-micro.yaml up -d --build
