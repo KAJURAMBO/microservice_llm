@@ -21,7 +21,7 @@ jobs:
           pre-commit install
 
       - name: Run pre-commit
-        run: pre-commit run --files ./microservice_llm/*
+        run: pre-commit run --files ./*
 
   run_tests:
     runs-on: ubuntu-latest
@@ -34,18 +34,18 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('microservice_llm/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip3 install -r microservice_llm/requirements.txt
-          pip3 install pytest
+          pip3 install -r requirements.txt
+          pip3 install pytest pytest-cov
 
       - name: Run tests
-        run: python -m pytest microservice_llm/tests/ --cov=. --cov-report=xml
+        run: python -m pytest tests/ --cov=. --cov-report=xml
 
   deploy:
     needs: [run_tests]
@@ -78,4 +78,4 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            curl -f http://localhost:8000/health || exit 1 
+            curl -f http://localhost:8000/health || exit 1
