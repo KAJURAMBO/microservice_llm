@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  llm-service:
+    build:
+      context: .
+      dockerfile: micro_service.Dockerfile
+    networks:
+      - llm-network
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CONSUL_HOST=consul
+      - CONSUL_PORT=8500
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - consul
+      - otel-collector
+
+  consul:
+    image: consul:1.10.0
+    container_name: dev-consul
+    networks:
+      - llm-network
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+    ports:
+      - "8500:8500"
+    command: "agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0"
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    networks:
+      - llm-network
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+networks:
+  llm-network:
+    driver: bridge
