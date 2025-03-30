@@ -2,6 +2,8 @@
 
 This microservice provides text generation capabilities using Groq LLM, with service discovery (Consul), distributed tracing (OpenTelemetry), and monitoring (Prometheus).
 
+Testing CI/CD pipeline trigger.
+
 ## Prerequisites
 
 - Docker and Docker Compose
