@@ -25,29 +25,30 @@ jobs:
 
   run_tests:
     runs-on: ubuntu-latest
+    needs: precommit
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Cache Python dependencies
+        uses: actions/cache@v3
         with:
-          python-version: '3.10'
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('microservice_llm/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          cd microservice_llm
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip3 install -r microservice_llm/requirements.txt
+          pip3 install pytest
 
       - name: Run tests
-        run: |
-          cd microservice_llm
-          python -m pytest tests/ --cov=. --cov-report=xml
+        run: python -m pytest microservice_llm/tests/ --cov=. --cov-report=xml
 
   deploy:
-    needs: [precommit, run_tests]
+    needs: [run_tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -61,7 +62,6 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd microservice_llm
             git pull origin main
             docker-compose -f docker-compose-micro.yaml down
             docker-compose -f docker-compose-micro.yaml up -d --build
