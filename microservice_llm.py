@@ -1,9 +1,3 @@
-"""LLM Text Generation Microservice.
-
-This module provides a FastAPI-based microservice for text generation using Groq LLM.
-It includes monitoring (Prometheus), tracing (OpenTelemetry), and service discovery (Consul).
-"""
-
 import logging
 import os
 import time
@@ -42,10 +36,7 @@ load_dotenv()
 # Initialize FastAPI app with metadata
 app = FastAPI(
     title="LLM Text Generation Microservice",
-    description=(
-        "A microservice that provides text generation capabilities "
-        "using Groq LLM"
-    ),
+    description="A microservice for text generation with Groq LLM",
     version="1.0.0",
 )
 
