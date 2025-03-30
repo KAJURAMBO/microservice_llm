@@ -4,31 +4,28 @@ A FastAPI-based microservice for text generation using Groq LLM.
 Includes monitoring, tracing, and service discovery capabilities.
 """
 
+# Standard library imports
+from datetime import UTC, datetime
 import logging
 import os
 import time
-from datetime import UTC, datetime
 from typing import Dict, Optional
 
+# Third-party imports
 import consul
-import groq
-import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import groq
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter,
-)
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    BatchSpanProcessor,
-    ConsoleSpanExporter,
-)
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_exponential
+import uvicorn
 
 # Configure logging
 logging.basicConfig(
