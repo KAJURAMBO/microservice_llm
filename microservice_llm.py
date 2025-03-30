@@ -1,7 +1,7 @@
 """LLM Text Generation Microservice.
 
 A FastAPI-based microservice for text generation using Groq LLM.
-Includes monitoring (Prometheus), tracing (OpenTelemetry), and service discovery.
+Includes monitoring, tracing, and service discovery capabilities.
 """
 
 import logging
