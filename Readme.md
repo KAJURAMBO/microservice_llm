@@ -19,6 +19,20 @@ microservice_llm/
 └── README.md                 # This file
 ```
 
+microservice_llm/
+├── microservice_llm.py
+├── micro_service.Dockerfile
+├── docker-compose-micro.yaml
+├── requirements.txt
+├── README.md
+├── tests/
+│   ├── __init__.py
+│   └── test_app.py
+├── .gitignore
+└── .github/
+    └── workflows/
+        └── ci-cd.yml
+
 ## Environment Variables
 
 Create a `.env` file in the project root:
@@ -48,7 +62,8 @@ echo "GROQ_API_KEY=your-groq-api-key" > .env
 3. Build and run the services:
 "docker pull consul:1.10.0"
 ```bash
-docker-compose -f docker-compose-micro.yaml up --build
+docker-compose -f docker-compose-micro.yaml up --build    #---for builing
+docker-compose -f docker-compose-micro.yaml up -d         #--for mking aup and logs also will not come in command prompt
 ```
 
 ### Manual Docker Build
@@ -180,3 +195,57 @@ uvicorn microservice_llm:app --reload --host 0.0.0.0 --port 8000
 ## Contributing
 
 [Your Contributing Guidelines]
+
+"""
+AWS_ACCESS_KEY_ID=your-aws-access-key
+AWS_SECRET_ACCESS_KEY=your-aws-secret-key
+AWS_REGION=your-aws-region
+AWS_ACCOUNT_ID=your-aws-account-id
+EC2_HOST=your-ec2-public-ip
+EC2_USERNAME=ec2-user
+EC2_SSH_KEY=your-private-ssh-key
+GROQ_API_KEY=your-groq-api-key
+CONSUL_HOST=your-consul-host
+CONSUL_PORT=your-consul-port
+OTEL_ENDPOINT=your-otel-endpoint"""
+
+
+# Install Docker
+sudo yum update -y
+sudo yum install -y docker
+sudo service docker start
+sudo usermod -a -G docker ec2-user
+
+# Install Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Install AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Configure AWS CLI
+aws configure
+
+aws ecr create-repository --repository-name llm-microservice
+
+mkdir -p ~/microservice_llm
+
+#!/bin/bash
+# ~/microservice_llm/deploy.sh
+
+# Pull the latest image
+aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+docker pull ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+
+# Stop and remove existing containers
+docker-compose -f docker-compose-micro.yaml down
+
+# Start new containers
+docker-compose -f docker-compose-micro.yaml up -d
+
+chmod +x ~/microservice_llm/deploy.sh
+
+
+
