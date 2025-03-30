@@ -19,14 +19,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import groq
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc import (
-    trace_exporter as otlp_trace_exporter
+    trace_exporter
 )
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation import fastapi
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    BatchSpanProcessor,
-    ConsoleSpanExporter
-)
+from opentelemetry.sdk.trace import export
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -75,25 +72,25 @@ ERROR_COUNT = Counter(
 tracer_provider = TracerProvider()
 try:
     # Attempt to use OTLP exporter for sending traces
-    otlp_exporter = otlp_trace_exporter.OTLPSpanExporter(
+    otlp_exporter = trace_exporter.OTLPSpanExporter(
         endpoint=os.getenv(
             "OTEL_EXPORTER_OTLP_ENDPOINT",
             "http://localhost:4317",
         )
     )
-    span_processor = BatchSpanProcessor(otlp_exporter)
+    span_processor = export.BatchSpanProcessor(otlp_exporter)
 except Exception as e:
     # Fallback to console exporter if OTLP fails
     logging.error(
         "Failed to initialize OTLP exporter, falling back to console: %s",
         e,
     )
-    span_processor = BatchSpanProcessor(ConsoleSpanExporter())
+    span_processor = export.BatchSpanProcessor(export.ConsoleSpanExporter())
 
 # Set the tracer provider and instrument the FastAPI app
 tracer_provider.add_span_processor(span_processor)
 trace.set_tracer_provider(tracer_provider)
-FastAPIInstrumentor.instrument_app(app)
+fastapi.FastAPIInstrumentor.instrument_app(app)
 
 # Initialize Consul client for service discovery
 consul_client = consul.Consul(
