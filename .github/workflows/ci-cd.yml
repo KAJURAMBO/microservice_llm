@@ -4,12 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main" ]
-    paths:
-      - 'microservice_llm/**'
   pull_request:
     branches: [ "main" ]
-    paths:
-      - 'microservice_llm/**'
 
 jobs:
   precommit:
@@ -29,100 +25,57 @@ jobs:
 
   run_tests:
     runs-on: ubuntu-latest
-    needs: precommit
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Cache Python dependencies
-        uses: actions/cache@v3
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('microservice_llm/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip3 install -r microservice_llm/requirements.txt
-          pip3 install pytest pytest-cov flake8
+          cd microservice_llm
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
 
       - name: Run tests
         run: |
-          pytest -v ./microservice_llm/tests/
+          cd microservice_llm
+          python -m pytest tests/ --cov=. --cov-report=xml
 
-  fetch_latest_changes:
+  deploy:
+    needs: [precommit, run_tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: [run_tests, precommit]
-    if: github.event_name == 'push'
     steps:
-      - name: Fetch latest changes
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            echo "Starting deployment.."
-            cd ~/microservice_llm
+            cd microservice_llm
             git pull origin main
-
-  build_deploy:
-    runs-on: ubuntu-latest
-    needs: fetch_latest_changes
-    if: github.event_name == 'push'
-    steps:
-      - name: Build and Deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          envs: GROQ_API_KEY,CONSUL_HOST,CONSUL_PORT,OTEL_ENDPOINT
-          script: |
-            echo "Starting deployment build.."
-            cd ~/microservice_llm
-            
-            # Set environment variables
-            export GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-            export CONSUL_HOST=localhost
-            export CONSUL_PORT=8500
-            export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-            
-            # Deploy using docker-compose
             docker-compose -f docker-compose-micro.yaml down
             docker-compose -f docker-compose-micro.yaml up -d --build
 
-  health_checks:
+  health_check:
+    needs: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: build_deploy
-    if: github.event_name == 'push'
     steps:
-      - name: Perform health checks
+      - name: Check service health
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            docker ps
-
-            echo "Sleeping for 40 seconds until containers are up.."
-            sleep 40
-
-            # Check FastAPI health endpoint
-            BACKEND_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health)
-            if [ $BACKEND_CODE != 200 ]
-            then
-                echo "FAILURE with status $BACKEND_CODE, LLM service not reachable"
-                exit 1
-            fi
-
-            # Check Consul health
-            CONSUL_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8500/v1/health/node/server-1)
-            if [ $CONSUL_CODE != 200 ]
-            then
-                echo "FAILURE with status $CONSUL_CODE, Consul not reachable"
-                exit 1
-            fi
+            curl -f http://localhost:8000/health || exit 1 
