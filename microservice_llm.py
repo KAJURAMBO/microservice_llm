@@ -18,10 +18,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import groq
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc import (
+    trace_exporter as otlp_trace_exporter
+)
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    ConsoleSpanExporter
+)
 from prometheus_client import Counter, Histogram, generate_latest
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -70,7 +75,7 @@ ERROR_COUNT = Counter(
 tracer_provider = TracerProvider()
 try:
     # Attempt to use OTLP exporter for sending traces
-    otlp_exporter = OTLPSpanExporter(
+    otlp_exporter = otlp_trace_exporter.OTLPSpanExporter(
         endpoint=os.getenv(
             "OTEL_EXPORTER_OTLP_ENDPOINT",
             "http://localhost:4317",
