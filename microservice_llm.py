@@ -18,9 +18,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import groq
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc import (
-    trace_exporter
-)
+# from opentelemetry.exporter.otlp.proto.grpc import (
+#     trace_exporter
+# )
 from opentelemetry.instrumentation import fastapi
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace import export
